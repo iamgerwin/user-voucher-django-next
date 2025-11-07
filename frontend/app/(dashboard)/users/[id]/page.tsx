@@ -1,10 +1,24 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { usersApi } from '@/lib/api/users';
 import { User } from '@/types/user';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { AppRoute } from '@/lib/constants/routes';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function UserDetailPage({
   params,
@@ -12,9 +26,12 @@ export default function UserDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -32,6 +49,18 @@ export default function UserDetailPage({
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      await usersApi.deleteUser(parseInt(id));
+      router.push(AppRoute.USERS);
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete user');
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
   if (isLoading) {
     return <div className="text-center py-8">Loading user...</div>;
   }
@@ -46,9 +75,23 @@ export default function UserDetailPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">{user.username}</h1>
-        <p className="text-muted-foreground">User details and information</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">{user.username}</h1>
+          <p className="text-muted-foreground">User details and information</p>
+        </div>
+        <div className="flex gap-2">
+          <Link href={`${AppRoute.USERS}/${id}/edit`}>
+            <Button variant="outline">Edit User</Button>
+          </Link>
+          <Button
+            variant="destructive"
+            onClick={() => setIsDeleteDialogOpen(true)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete User'}
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -94,6 +137,28 @@ export default function UserDetailPage({
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user
+              <span className="font-semibold"> {user.username}</span> and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

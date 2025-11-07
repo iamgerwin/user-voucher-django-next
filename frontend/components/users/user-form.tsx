@@ -3,7 +3,14 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createUserSchema, CreateUserFormData } from '@/lib/validations/user';
+import { useRouter } from 'next/navigation';
+import {
+  createUserSchema,
+  updateUserSchema,
+  CreateUserFormData,
+  UpdateUserFormData,
+} from '@/lib/validations/user';
+import { User } from '@/types/user';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -16,34 +23,53 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AppRoute } from '@/lib/constants/routes';
 
 interface UserFormProps {
-  onSubmit: (data: CreateUserFormData) => Promise<void>;
+  mode?: 'create' | 'edit';
+  initialData?: User;
+  onSubmit: (data: CreateUserFormData | UpdateUserFormData) => Promise<void>;
   isLoading?: boolean;
 }
 
-export function UserForm({ onSubmit, isLoading = false }: UserFormProps) {
+export function UserForm({
+  mode = 'create',
+  initialData,
+  onSubmit,
+  isLoading = false,
+}: UserFormProps) {
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const form = useForm<CreateUserFormData>({
-    resolver: zodResolver(createUserSchema),
-    defaultValues: {
-      username: '',
-      email: '',
-      password: '',
-      first_name: '',
-      last_name: '',
-      is_active: true,
-      is_staff: false,
-    },
+  const form = useForm<CreateUserFormData | UpdateUserFormData>({
+    resolver: zodResolver(mode === 'edit' ? updateUserSchema : createUserSchema),
+    defaultValues:
+      mode === 'edit' && initialData
+        ? {
+            username: initialData.username,
+            email: initialData.email,
+            first_name: initialData.first_name || '',
+            last_name: initialData.last_name || '',
+            is_active: initialData.is_active,
+            is_staff: initialData.is_staff,
+          }
+        : {
+            username: '',
+            email: '',
+            password: '',
+            first_name: '',
+            last_name: '',
+            is_active: true,
+            is_staff: false,
+          },
   });
 
-  const handleSubmit = async (data: CreateUserFormData) => {
+  const handleSubmit = async (data: CreateUserFormData | UpdateUserFormData) => {
     try {
       setError(null);
       await onSubmit(data);
     } catch (err: any) {
-      setError(err.message || 'Failed to create user');
+      setError(err.message || `Failed to ${mode} user`);
     }
   };
 
@@ -115,30 +141,54 @@ export function UserForm({ onSubmit, isLoading = false }: UserFormProps) {
             />
           </div>
 
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl>
-                  <Input
-                    type="password"
-                    placeholder="Enter password"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription>
-                  Must be at least 8 characters with uppercase, lowercase, and number
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {mode === 'create' && (
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="Enter password"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Must be at least 8 characters with uppercase, lowercase, and number
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Creating...' : 'Create User'}
-          </Button>
+          <div className="flex gap-4">
+            <Button type="submit" disabled={isLoading}>
+              {isLoading
+                ? mode === 'edit'
+                  ? 'Updating...'
+                  : 'Creating...'
+                : mode === 'edit'
+                ? 'Update User'
+                : 'Create User'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                router.push(
+                  mode === 'edit' && initialData
+                    ? `${AppRoute.USER_DETAIL}/${initialData.id}`
+                    : AppRoute.USERS
+                )
+              }
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+          </div>
         </form>
       </Form>
     </div>

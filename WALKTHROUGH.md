@@ -22,23 +22,23 @@ This document provides a comprehensive walkthrough of HTTP request lifecycles in
 ```mermaid
 graph TB
     subgraph "Frontend (Next.js 16 - Port 3000)"
-        UI[UI Components<br/>React Client Components]
-        Hooks[Custom Hooks<br/>use-auth, use-api]
-        API[API Client Layer<br/>apiClient, authApi, vouchersApi]
+        UI["UI Components - React Client Components"]
+        Hooks["Custom Hooks - use-auth, use-api"]
+        API["API Client Layer - apiClient, authApi, vouchersApi"]
     end
 
     subgraph "Network Layer"
-        Axios[Axios HTTP Client<br/>Interceptors]
-        Storage[LocalStorage<br/>access_token, refresh_token, user]
+        Axios["Axios HTTP Client with Interceptors"]
+        Storage["LocalStorage: access_token, refresh_token, user"]
     end
 
     subgraph "Backend (Django REST - Port 8000)"
-        Routes[URL Router<br/>config/urls.py]
-        Views[ViewSets & Views<br/>auth_views.py, voucher_viewset.py]
-        Auth[JWT Authentication<br/>SimpleJWT]
-        Serializers[DRF Serializers<br/>Validation & Serialization]
-        Models[Django Models<br/>User, Voucher, etc.]
-        DB[(PostgreSQL<br/>Database)]
+        Routes["URL Router - config/urls.py"]
+        Views["ViewSets and Views - auth_views.py, voucher_viewset.py"]
+        Auth["JWT Authentication - SimpleJWT"]
+        Serializers["DRF Serializers - Validation and Serialization"]
+        Models["Django Models - User, Voucher, etc."]
+        DB[("PostgreSQL Database")]
     end
 
     UI --> Hooks
@@ -820,30 +820,30 @@ HTTP/1.1 204 No Content
 ```mermaid
 graph TB
     subgraph "Authentication Flow"
-        LoginPage[LoginPage<br/>page.tsx]
-        LoginForm[LoginForm<br/>login-form.tsx<br/>'use client']
-        useAuth[useAuth Hook<br/>use-auth.ts]
+        LoginPage["LoginPage - page.tsx"]
+        LoginForm["LoginForm - login-form.tsx - 'use client'"]
+        useAuth["useAuth Hook - use-auth.ts"]
     end
 
     subgraph "Voucher Management"
-        VouchersPage[VouchersPage<br/>page.tsx<br/>'use client']
-        VoucherNewPage[VoucherNewPage<br/>new/page.tsx]
-        VoucherDetailPage[VoucherDetailPage<br/>[id]/page.tsx<br/>'use client']
+        VouchersPage["VouchersPage - page.tsx - 'use client'"]
+        VoucherNewPage["VoucherNewPage - new/page.tsx"]
+        VoucherDetailPage["VoucherDetailPage - [id]/page.tsx - 'use client'"]
 
-        VoucherList[VoucherList<br/>voucher-list.tsx<br/>'use client']
-        VoucherCard[VoucherCard<br/>voucher-card.tsx<br/>'use client']
-        VoucherForm[VoucherForm<br/>voucher-form.tsx<br/>'use client']
+        VoucherList["VoucherList - voucher-list.tsx - 'use client'"]
+        VoucherCard["VoucherCard - voucher-card.tsx - 'use client'"]
+        VoucherForm["VoucherForm - voucher-form.tsx - 'use client'"]
     end
 
     subgraph "API Layer"
-        authApi[authApi<br/>lib/api/auth.ts]
-        vouchersApi[vouchersApi<br/>lib/api/vouchers.ts]
-        apiClient[apiClient<br/>lib/api/client.ts]
+        authApi["authApi - lib/api/auth.ts"]
+        vouchersApi["vouchersApi - lib/api/vouchers.ts"]
+        apiClient["apiClient - lib/api/client.ts"]
     end
 
     subgraph "State Management"
-        LocalStorage[(LocalStorage<br/>access_token<br/>refresh_token<br/>user)]
-        ReactState[React State<br/>useState, useEffect]
+        LocalStorage[("LocalStorage: access_token, refresh_token, user")]
+        ReactState["React State: useState, useEffect"]
     end
 
     LoginPage --> LoginForm
@@ -879,30 +879,30 @@ graph TB
 ```mermaid
 graph TB
     subgraph "URL Routing"
-        MainURLs[config/urls.py<br/>Main URL Configuration]
-        UsersURLs[apps/users/urls.py<br/>User Routes]
-        VouchersURLs[apps/vouchers/urls.py<br/>Voucher Routes]
+        MainURLs["config/urls.py - Main URL Configuration"]
+        UsersURLs["apps/users/urls.py - User Routes"]
+        VouchersURLs["apps/vouchers/urls.py - Voucher Routes"]
     end
 
     subgraph "Views Layer"
-        AuthViews[auth_views.py<br/>login_view<br/>register_view<br/>logout_view]
-        UserViewSet[UserViewSet<br/>user_viewset.py]
-        VoucherViewSet[VoucherViewSet<br/>voucher_viewset.py]
+        AuthViews["auth_views.py: login_view, register_view, logout_view"]
+        UserViewSet["UserViewSet - user_viewset.py"]
+        VoucherViewSet["VoucherViewSet - voucher_viewset.py"]
     end
 
     subgraph "Serializers Layer"
-        UserSerializers[User Serializers<br/>UserSerializer<br/>UserCreateSerializer<br/>UserUpdateSerializer]
-        VoucherSerializers[Voucher Serializers<br/>VoucherSerializer<br/>VoucherCreateSerializer<br/>Type-specific Serializers]
+        UserSerializers["User Serializers: UserSerializer, UserCreateSerializer, UserUpdateSerializer"]
+        VoucherSerializers["Voucher Serializers: VoucherSerializer, VoucherCreateSerializer, Type-specific"]
     end
 
     subgraph "Models Layer"
-        UserModel[User Model<br/>Custom AbstractUser]
-        VoucherModel[Voucher Models<br/>Voucher (Base)<br/>PercentageDiscountVoucher<br/>FixedAmountVoucher<br/>FreeShippingVoucher]
-        UsageModel[VoucherUsage Model]
+        UserModel["User Model - Custom AbstractUser"]
+        VoucherModel["Voucher Models: Base, PercentageDiscount, FixedAmount, FreeShipping"]
+        UsageModel["VoucherUsage Model"]
     end
 
     subgraph "Authentication"
-        JWT[SimpleJWT<br/>Token Generation<br/>Token Validation<br/>Token Refresh]
+        JWT["SimpleJWT: Token Generation, Validation, Refresh"]
     end
 
     MainURLs --> AuthViews
@@ -941,12 +941,12 @@ flowchart TB
 
     Start --> ReqInt{Request Interceptor}
 
-    ReqInt -->|Check Browser| Browser{typeof window<br/>!== 'undefined'}
-    Browser -->|Yes| GetToken[Get access_token<br/>from localStorage]
+    ReqInt -->|Check Browser| Browser{"typeof window !== undefined"}
+    Browser -->|Yes| GetToken["Get access_token from localStorage"]
     Browser -->|No| SendReq
 
     GetToken --> HasToken{Token exists?}
-    HasToken -->|Yes| AddAuth[Add Authorization header:<br/>Bearer {token}]
+    HasToken -->|Yes| AddAuth["Add Authorization header: Bearer token"]
     HasToken -->|No| SendReq[Send Request]
 
     AddAuth --> SendReq
@@ -954,29 +954,29 @@ flowchart TB
     SendReq --> Backend[Django Backend]
     Backend --> Response{Response Status}
 
-    Response -->|2xx Success| ResInt[Response Interceptor<br/>Pass through]
+    Response -->|2xx Success| ResInt["Response Interceptor - Pass through"]
     Response -->|401 Unauthorized| CheckRetry{Check _retry flag}
     Response -->|Other Error| ResInt
 
-    CheckRetry -->|Already retried| ClearStorage[Clear localStorage:<br/>- access_token<br/>- refresh_token<br/>- user]
-    CheckRetry -->|First attempt| SetRetry[Set _retry = true]
+    CheckRetry -->|Already retried| ClearStorage["Clear localStorage: access_token, refresh_token, user"]
+    CheckRetry -->|First attempt| SetRetry["Set _retry = true"]
 
-    SetRetry --> GetRefresh[Get refresh_token<br/>from localStorage]
-    GetRefresh --> HasRefresh{Refresh token<br/>exists?}
+    SetRetry --> GetRefresh["Get refresh_token from localStorage"]
+    GetRefresh --> HasRefresh{Refresh token exists?}
 
     HasRefresh -->|No| ClearStorage
-    HasRefresh -->|Yes| RefreshReq[POST /auth/refresh/<br/>{refresh: token}]
+    HasRefresh -->|Yes| RefreshReq["POST /auth/refresh/ with refresh token"]
 
     RefreshReq --> RefreshRes{Refresh Response}
 
-    RefreshRes -->|Success| SaveNew[Save new access_token<br/>to localStorage]
+    RefreshRes -->|Success| SaveNew["Save new access_token to localStorage"]
     RefreshRes -->|Failed| ClearStorage
 
-    SaveNew --> UpdateReq[Update original request<br/>with new token]
+    SaveNew --> UpdateReq["Update original request with new token"]
     UpdateReq --> RetryReq[Retry original request]
     RetryReq --> Backend
 
-    ClearStorage --> Redirect[window.location.href<br/>= '/login']
+    ClearStorage --> Redirect["Redirect to /login"]
     Redirect --> End1([End - User logged out])
 
     ResInt --> ReturnData[Return response data]
@@ -1150,20 +1150,20 @@ flowchart TB
     Type -->|404 Not Found| NotFound[Resource Not Found]
     Type -->|500 Server Error| ServerError[Server Error]
 
-    NetError --> ShowMsg1[Show: "Connection failed.<br/>Please check your internet."]
+    NetError --> ShowMsg1["Show: Connection failed - Please check your internet"]
 
-    AuthError --> Refresh{Token refresh<br/>attempted?}
+    AuthError --> Refresh{Token refresh attempted?}
     Refresh -->|Success| Retry[Retry original request]
-    Refresh -->|Failed| Logout[Clear tokens +<br/>Redirect to /login]
+    Refresh -->|Failed| Logout["Clear tokens and Redirect to /login"]
 
-    PermError --> ShowMsg2[Show: "You don't have<br/>permission for this action."]
+    PermError --> ShowMsg2["Show: You do not have permission for this action"]
 
-    ValError --> ParseErrors[Parse field errors<br/>from response]
-    ParseErrors --> ShowField[Show field-specific<br/>error messages in form]
+    ValError --> ParseErrors["Parse field errors from response"]
+    ParseErrors --> ShowField["Show field-specific error messages in form"]
 
-    NotFound --> ShowMsg3[Show: "Resource not found."]
+    NotFound --> ShowMsg3["Show: Resource not found"]
 
-    ServerError --> ShowMsg4[Show: "Server error occurred.<br/>Please try again later."]
+    ServerError --> ShowMsg4["Show: Server error occurred - Please try again later"]
 
     ShowMsg1 --> End([End])
     Logout --> End

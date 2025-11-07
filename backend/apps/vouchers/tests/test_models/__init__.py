@@ -1,0 +1,3 @@
+"""
+Voucher model tests.
+"""

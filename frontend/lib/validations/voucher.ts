@@ -54,25 +54,20 @@ export const createVoucherSchema = z.object({
 });
 
 export const updateVoucherSchema = z.object({
-  code: z
+  name: z
     .string()
-    .min(4, 'Code must be at least 4 characters')
-    .max(50, 'Code must be less than 50 characters')
-    .regex(/^[A-Z0-9-_]+$/, 'Code can only contain uppercase letters, numbers, hyphens, and underscores')
-    .optional(),
-  discount_amount: z
-    .string()
-    .regex(/^\d+(\.\d{1,2})?$/, 'Invalid amount format')
-    .refine((val) => parseFloat(val) > 0, 'Discount amount must be greater than 0')
-    .optional(),
-  max_uses: z
+    .min(1, 'Name is required')
+    .max(200, 'Name must be less than 200 characters'),
+  description: z.string().optional(),
+  usage_limit: z
     .number()
-    .int('Max uses must be a whole number')
-    .min(1, 'Max uses must be at least 1')
+    .int('Usage limit must be a whole number')
+    .min(1, 'Usage limit must be at least 1')
+    .nullable()
     .optional(),
   valid_from: z.string().optional(),
   valid_until: z.string().optional(),
-  status: z.enum(['active', 'used', 'expired']).optional(),
+  status: z.enum(['ACTIVE', 'USED', 'EXPIRED', 'CANCELLED']).optional(),
 });
 
 export const useVoucherSchema = z.object({

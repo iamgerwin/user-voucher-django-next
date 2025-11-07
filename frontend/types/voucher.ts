@@ -40,12 +40,12 @@ export interface CreateVoucherRequest {
 }
 
 export interface UpdateVoucherRequest {
-  code?: string;
-  discount_amount?: string;
-  max_uses?: number;
+  name: string;
+  description?: string;
+  usage_limit?: number | null;
   valid_from?: string;
   valid_until?: string;
-  status?: VoucherStatus;
+  status?: string;
 }
 
 export interface VoucherListResponse {

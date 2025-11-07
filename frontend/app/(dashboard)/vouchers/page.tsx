@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { AppRoute } from '@/lib/constants/routes';
 import { useAuth } from '@/hooks/use-auth';
 import { UserRole } from '@/types/user';
+import { AuditLogService } from '@/lib/audit-log';
 
 export default function VouchersPage() {
   const { user } = useAuth();
@@ -37,12 +38,18 @@ export default function VouchersPage() {
   };
 
   const handleBulkDelete = async (ids: number[]) => {
+    if (!user) return;
+
     try {
       // Optimistically remove from UI
       const previousVouchers = vouchers;
       setVouchers(vouchers.filter((v) => !ids.includes(v.id)));
 
       await vouchersApi.bulkDeleteVouchers(ids);
+
+      // Log the bulk deletion
+      AuditLogService.logVoucherBulkDelete(ids, user.username, user.id, ids.length);
+
       toast.success(`Successfully deleted ${ids.length} voucher${ids.length > 1 ? 's' : ''}`);
 
       // Reload to ensure consistency

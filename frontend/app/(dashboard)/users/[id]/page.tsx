@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { usersApi } from '@/lib/api/users';
 import { User } from '@/types/user';
+import { useAuth } from '@/hooks/use-auth';
+import { AuditLogService } from '@/lib/audit-log';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,6 +30,7 @@ export default function UserDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { user: currentUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,9 +54,20 @@ export default function UserDetailPage({
   };
 
   const handleDelete = async () => {
+    if (!user || !currentUser) return;
+
     try {
       setIsDeleting(true);
       await usersApi.deleteUser(parseInt(id));
+
+      // Log the deletion
+      AuditLogService.logUserDelete(
+        user.id,
+        user.username,
+        currentUser.username,
+        currentUser.id
+      );
+
       toast.success('User deleted successfully');
       router.push(AppRoute.USERS);
     } catch (err: any) {

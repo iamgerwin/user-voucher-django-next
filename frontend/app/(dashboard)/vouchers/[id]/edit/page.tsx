@@ -7,6 +7,8 @@ import { Voucher } from '@/types/voucher';
 import { UpdateVoucherFormData } from '@/lib/validations/voucher';
 import { VoucherForm } from '@/components/vouchers/voucher-form';
 import { AppRoute } from '@/lib/constants/routes';
+import { useAuth } from '@/hooks/use-auth';
+import { AuditLogService } from '@/lib/audit-log';
 
 export default function EditVoucherPage({
   params,
@@ -15,6 +17,7 @@ export default function EditVoucherPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   const [voucher, setVoucher] = useState<Voucher | null>(null);
   const [optimisticVoucher, setOptimisticVoucher] = useOptimistic(voucher);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,6 +57,17 @@ export default function EditVoucherPage({
       // Perform the actual update
       const updatedVoucher = await vouchersApi.updateVoucher(parseInt(id), data);
       setVoucher(updatedVoucher);
+
+      // Log the update
+      if (user && voucher) {
+        AuditLogService.logVoucherUpdate(
+          updatedVoucher.id,
+          updatedVoucher.code,
+          user.username,
+          user.id,
+          data
+        );
+      }
 
       router.push(`${AppRoute.VOUCHER_DETAIL}/${id}`);
     } catch (err: any) {

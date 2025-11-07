@@ -7,6 +7,8 @@ import { User } from '@/types/user';
 import { UpdateUserFormData } from '@/lib/validations/user';
 import { UserForm } from '@/components/users/user-form';
 import { AppRoute } from '@/lib/constants/routes';
+import { useAuth } from '@/hooks/use-auth';
+import { AuditLogService } from '@/lib/audit-log';
 
 export default function EditUserPage({
   params,
@@ -15,6 +17,7 @@ export default function EditUserPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { user: currentUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [optimisticUser, setOptimisticUser] = useOptimistic(user);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +55,17 @@ export default function EditUserPage({
       // Perform the actual update
       const updatedUser = await usersApi.updateUser(parseInt(id), data);
       setUser(updatedUser);
+
+      // Log the update
+      if (currentUser && user) {
+        AuditLogService.logUserUpdate(
+          updatedUser.id,
+          updatedUser.username,
+          currentUser.username,
+          currentUser.id,
+          data
+        );
+      }
 
       router.push(`${AppRoute.USER_DETAIL}/${id}`);
     } catch (err: any) {

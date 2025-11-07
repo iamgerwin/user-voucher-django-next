@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { AppRoute } from '@/lib/constants/routes';
 
 export default function UsersPage() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,12 +32,18 @@ export default function UsersPage() {
   };
 
   const handleBulkDelete = async (ids: number[]) => {
+    if (!currentUser) return;
+
     try {
       // Optimistically remove from UI
       const previousUsers = users;
       setUsers(users.filter((u) => !ids.includes(u.id)));
 
       await usersApi.bulkDeleteUsers(ids);
+
+      // Log the bulk deletion
+      AuditLogService.logUserBulkDelete(ids, currentUser.username, currentUser.id, ids.length);
+
       toast.success(`Successfully deleted ${ids.length} user${ids.length > 1 ? 's' : ''}`);
 
       // Reload to ensure consistency

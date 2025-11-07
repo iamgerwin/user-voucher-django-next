@@ -9,6 +9,7 @@ import { AppRoute } from '@/lib/constants/routes';
 import { useAuth } from '@/hooks/use-auth';
 import { UserRole } from '@/types/user';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AuditLogService } from '@/lib/audit-log';
 
 export default function NewVoucherPage() {
   const router = useRouter();
@@ -62,7 +63,18 @@ export default function NewVoucherPage() {
   const handleSubmit = async (data: CreateVoucherFormData) => {
     setIsLoading(true);
     try {
-      await vouchersApi.createVoucher(data);
+      const voucher = await vouchersApi.createVoucher(data);
+
+      // Log the creation
+      if (user) {
+        AuditLogService.logVoucherCreate(
+          voucher.id,
+          voucher.code,
+          user.username,
+          user.id
+        );
+      }
+
       router.push(AppRoute.VOUCHERS);
     } catch (error) {
       console.error('Failed to create voucher:', error);

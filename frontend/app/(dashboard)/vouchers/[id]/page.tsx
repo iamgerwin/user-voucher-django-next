@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { vouchersApi } from '@/lib/api/vouchers';
 import { Voucher } from '@/types/voucher';
+import { useAuth } from '@/hooks/use-auth';
+import { AuditLogService } from '@/lib/audit-log';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,6 +39,7 @@ export default function VoucherDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
   const [voucher, setVoucher] = useState<Voucher | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,9 +63,20 @@ export default function VoucherDetailPage({
   };
 
   const handleDelete = async () => {
+    if (!voucher || !user) return;
+
     try {
       setIsDeleting(true);
       await vouchersApi.deleteVoucher(parseInt(id));
+
+      // Log the deletion
+      AuditLogService.logVoucherDelete(
+        voucher.id,
+        voucher.code,
+        user.username,
+        user.id
+      );
+
       toast.success('Voucher deleted successfully');
       router.push(AppRoute.VOUCHERS);
     } catch (err: any) {

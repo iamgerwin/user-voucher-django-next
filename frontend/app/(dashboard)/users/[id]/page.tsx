@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { usersApi } from '@/lib/api/users';
 import { User } from '@/types/user';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,20 +9,21 @@ import { Badge } from '@/components/ui/badge';
 export default function UserDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = use(params);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadUser();
-  }, [params.id]);
+  }, [id]);
 
   const loadUser = async () => {
     try {
       setIsLoading(true);
-      const userData = await usersApi.getUserById(parseInt(params.id));
+      const userData = await usersApi.getUserById(parseInt(id));
       setUser(userData);
     } catch (err: any) {
       setError(err.message || 'Failed to load user');

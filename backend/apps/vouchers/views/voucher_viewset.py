@@ -17,6 +17,7 @@ from apps.vouchers.models import (
 )
 from apps.vouchers.serializers import (
     VoucherSerializer,
+    VoucherCreateSerializer,
     PercentageDiscountVoucherSerializer,
     FixedAmountVoucherSerializer,
     FreeShippingVoucherSerializer,
@@ -74,35 +75,30 @@ class VoucherViewSet(viewsets.ModelViewSet):
         """
         Return appropriate serializer based on action and voucher type.
         """
-        if self.action == 'list':
-            return VoucherListSerializer
-        elif self.action == 'validate':
+        if self.action == 'validate':
             return VoucherValidateSerializer
+        elif self.action == 'create':
+            # Use unified creation serializer for creating vouchers
+            return VoucherCreateSerializer
 
-        # For detail/create/update, use specific serializer based on type
-        if self.action in ['create', 'update', 'partial_update']:
-            voucher_type = None
+        # For retrieve, update, and list (single item), use specific serializer based on instance type
+        if self.action in ['retrieve', 'update', 'partial_update']:
+            try:
+                obj = self.get_object()
+                voucher_type = obj.polymorphic_ctype.model
 
-            # Get type from request data for create
-            if self.action == 'create':
-                voucher_type = self.request.data.get('voucher_type')
-            # Get type from instance for update
-            elif hasattr(self, 'get_object'):
-                try:
-                    obj = self.get_object()
-                    voucher_type = obj.polymorphic_ctype.model
-                except:
-                    pass
+                if voucher_type == 'percentagediscountvoucher':
+                    return PercentageDiscountVoucherSerializer
+                elif voucher_type == 'fixedamountvoucher':
+                    return FixedAmountVoucherSerializer
+                elif voucher_type == 'freeshippingvoucher':
+                    return FreeShippingVoucherSerializer
+            except:
+                pass
 
-            # Return appropriate serializer
-            if voucher_type == 'percentagediscountvoucher':
-                return PercentageDiscountVoucherSerializer
-            elif voucher_type == 'fixedamountvoucher':
-                return FixedAmountVoucherSerializer
-            elif voucher_type == 'freeshippingvoucher':
-                return FreeShippingVoucherSerializer
-
-        # Default serializer
+        # Default serializer for list and other actions
+        # Note: For list view, this will use the base serializer which doesn't have
+        # polymorphic-specific fields, but we'll override list() to handle this
         return VoucherSerializer
 
     def get_permissions(self):
@@ -130,7 +126,70 @@ class VoucherViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Only admins and managers can create vouchers.")
 
-        serializer.save(created_by=self.request.user)
+        return serializer.save(created_by=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        """
+        List vouchers with proper polymorphic serialization.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            # Serialize each voucher with its specific serializer
+            serialized_data = []
+            for voucher in page:
+                if isinstance(voucher, PercentageDiscountVoucher):
+                    serializer = PercentageDiscountVoucherSerializer(voucher)
+                elif isinstance(voucher, FixedAmountVoucher):
+                    serializer = FixedAmountVoucherSerializer(voucher)
+                elif isinstance(voucher, FreeShippingVoucher):
+                    serializer = FreeShippingVoucherSerializer(voucher)
+                else:
+                    serializer = VoucherSerializer(voucher)
+                serialized_data.append(serializer.data)
+
+            return self.get_paginated_response(serialized_data)
+
+        # Non-paginated response
+        serialized_data = []
+        for voucher in queryset:
+            if isinstance(voucher, PercentageDiscountVoucher):
+                serializer = PercentageDiscountVoucherSerializer(voucher)
+            elif isinstance(voucher, FixedAmountVoucher):
+                serializer = FixedAmountVoucherSerializer(voucher)
+            elif isinstance(voucher, FreeShippingVoucher):
+                serializer = FreeShippingVoucherSerializer(voucher)
+            else:
+                serializer = VoucherSerializer(voucher)
+            serialized_data.append(serializer.data)
+
+        return Response(serialized_data)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create a voucher and return appropriate serialized response.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        voucher = self.perform_create(serializer)
+
+        # Get appropriate response serializer based on voucher type
+        if isinstance(voucher, PercentageDiscountVoucher):
+            response_serializer = PercentageDiscountVoucherSerializer(voucher)
+        elif isinstance(voucher, FixedAmountVoucher):
+            response_serializer = FixedAmountVoucherSerializer(voucher)
+        elif isinstance(voucher, FreeShippingVoucher):
+            response_serializer = FreeShippingVoucherSerializer(voucher)
+        else:
+            response_serializer = VoucherSerializer(voucher)
+
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
 
     def perform_update(self, serializer):
         """

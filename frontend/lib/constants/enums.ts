@@ -15,9 +15,15 @@ export enum StorageKey {
 }
 
 export enum VoucherStatus {
-  ACTIVE = 'active',
-  USED = 'used',
-  EXPIRED = 'expired',
+  ACTIVE = 'ACTIVE',
+  EXPIRED = 'EXPIRED',
+  USED = 'USED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum DiscountType {
+  FIXED = 'FIXED_AMOUNT',
+  PERCENTAGE = 'PERCENTAGE',
 }
 
 export enum HttpMethod {

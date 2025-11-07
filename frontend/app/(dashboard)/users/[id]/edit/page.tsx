@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState, useOptimistic } from 'react';
+import { use, useEffect, useState, useOptimistic, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { usersApi } from '@/lib/api/users';
 import { User } from '@/types/user';
@@ -46,10 +46,12 @@ export default function EditUserPage({
     try {
       setIsSaving(true);
 
-      // Optimistically update the UI
-      setOptimisticUser({
-        ...user,
-        ...data,
+      // Optimistically update the UI within a transition
+      startTransition(() => {
+        setOptimisticUser({
+          ...user,
+          ...data,
+        });
       });
 
       // Perform the actual update
@@ -70,7 +72,9 @@ export default function EditUserPage({
       router.push(`${AppRoute.USER_DETAIL}/${id}`);
     } catch (err: any) {
       // Revert optimistic update on error
-      setOptimisticUser(user);
+      startTransition(() => {
+        setOptimisticUser(user);
+      });
       setError(err.message || 'Failed to update user');
       throw err;
     } finally {

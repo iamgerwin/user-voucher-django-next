@@ -91,11 +91,11 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             # Anyone can register
             permission_classes = [AllowAny]
-        elif self.action in ['list', 'destroy', 'activate', 'deactivate']:
-            # Only admins can list all users or delete
+        elif self.action in ['destroy', 'activate', 'deactivate']:
+            # Only admins can delete or change user status
             permission_classes = [IsAdminUser]
-        elif self.action in ['me', 'change_password']:
-            # Authenticated users only
+        elif self.action in ['list', 'me', 'change_password']:
+            # Authenticated users can list (with filtered results)
             permission_classes = [IsAuthenticated]
         elif self.action in ['retrieve', 'update', 'partial_update']:
             # Authenticated users (but can only modify their own data)

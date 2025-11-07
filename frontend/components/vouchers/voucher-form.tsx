@@ -83,14 +83,12 @@ export function VoucherForm({
     defaultValues:
       mode === 'edit' && initialData
         ? {
-            code: initialData.code,
-            discount_amount: String(
-              initialData.discount_percentage || initialData.discount_amount || ''
-            ),
-            max_uses: initialData.usage_limit || 1,
+            name: initialData.name,
+            description: initialData.description || '',
+            usage_limit: initialData.usage_limit || null,
             valid_from: validIndefinitely ? '' : formatDateForInput(initialData.valid_from),
             valid_until: validIndefinitely ? '' : formatDateForInput(initialData.valid_until),
-            status: initialData.status?.toLowerCase() as any,
+            status: initialData.status?.toUpperCase() as any,
           }
         : {
             code: '',
@@ -106,7 +104,7 @@ export function VoucherForm({
   const handleSubmit = async (data: CreateVoucherFormData | UpdateVoucherFormData) => {
     try {
       // Clean up the data before sending
-      const cleanedData = { ...data };
+      const cleanedData: any = { ...data };
 
       // For create mode, handle indefinite dates
       if ('valid_indefinitely' in cleanedData) {
@@ -115,6 +113,15 @@ export function VoucherForm({
           delete cleanedData.valid_until;
         }
         delete cleanedData.valid_indefinitely;
+      }
+
+      // For edit mode, remove empty strings and only send changed fields
+      if (mode === 'edit') {
+        Object.keys(cleanedData).forEach(key => {
+          if (cleanedData[key] === '' || cleanedData[key] === undefined) {
+            delete cleanedData[key];
+          }
+        });
       }
 
       await onSubmit(cleanedData);
@@ -133,27 +140,75 @@ export function VoucherForm({
     <div className="space-y-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="code"
-            render={({ field }) => (
-              <FormItem>
+          {mode === 'create' && (
+            <FormField
+              control={form.control}
+              name="code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Voucher Code</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="SUMMER2024"
+                      className="font-mono"
+                      {...field}
+                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Use uppercase letters, numbers, hyphens, and underscores only
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {mode === 'edit' && (
+            <>
+              <div className="space-y-2">
                 <FormLabel>Voucher Code</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="SUMMER2024"
-                    className="font-mono"
-                    {...field}
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                  />
-                </FormControl>
-                <FormDescription>
-                  Use uppercase letters, numbers, hyphens, and underscores only
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                <div className="px-3 py-2 border rounded-md bg-muted text-muted-foreground font-mono">
+                  {initialData?.code}
+                </div>
+                <FormDescription>Voucher code cannot be changed after creation</FormDescription>
+              </div>
+
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Summer Sale 2024" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Human-readable name for the voucher
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Optional description" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Optional detailed description
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
 
           {mode === 'create' && (
             <div className="space-y-4">
@@ -193,71 +248,116 @@ export function VoucherForm({
             </div>
           )}
 
-          <div className="space-y-4">
+          {mode === 'create' && (
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="discount_amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {discountType === DiscountType.PERCENTAGE ? 'Discount Percentage' : 'Discount Amount'}
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        {discountType === DiscountType.FIXED && (
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                            $
+                          </span>
+                        )}
+                        <Input
+                          type="number"
+                          step={discountType === DiscountType.PERCENTAGE ? '1' : '0.01'}
+                          min="0"
+                          max={discountType === DiscountType.PERCENTAGE ? '100' : undefined}
+                          placeholder={discountType === DiscountType.PERCENTAGE ? '10' : '10.00'}
+                          className={discountType === DiscountType.FIXED ? 'pl-7' : ''}
+                          {...field}
+                        />
+                        {discountType === DiscountType.PERCENTAGE && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                            %
+                          </span>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      {discountType === DiscountType.PERCENTAGE
+                        ? 'Enter percentage (0-100)'
+                        : 'Enter the discount amount in dollars'}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
 
+          {mode === 'edit' && (
+            <div className="space-y-2">
+              <FormLabel>Discount Value</FormLabel>
+              <div className="px-3 py-2 border rounded-md bg-muted text-muted-foreground">
+                {initialData?.discount_percentage
+                  ? `${initialData.discount_percentage}%`
+                  : initialData?.discount_amount
+                  ? `$${initialData.discount_amount}`
+                  : 'N/A'}
+              </div>
+              <FormDescription>Discount value cannot be changed after creation</FormDescription>
+            </div>
+          )}
+
+          {mode === 'create' && (
             <FormField
               control={form.control}
-              name="discount_amount"
+              name="max_uses"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>
-                    {discountType === DiscountType.PERCENTAGE ? 'Discount Percentage' : 'Discount Amount'}
-                  </FormLabel>
+                  <FormLabel>Maximum Uses</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      {discountType === DiscountType.FIXED && (
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                          $
-                        </span>
-                      )}
-                      <Input
-                        type="number"
-                        step={discountType === DiscountType.PERCENTAGE ? '1' : '0.01'}
-                        min="0"
-                        max={discountType === DiscountType.PERCENTAGE ? '100' : undefined}
-                        placeholder={discountType === DiscountType.PERCENTAGE ? '10' : '10.00'}
-                        className={discountType === DiscountType.FIXED ? 'pl-7' : ''}
-                        {...field}
-                      />
-                      {discountType === DiscountType.PERCENTAGE && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                          %
-                        </span>
-                      )}
-                    </div>
+                    <Input
+                      type="number"
+                      placeholder="100"
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                    />
                   </FormControl>
                   <FormDescription>
-                    {discountType === DiscountType.PERCENTAGE
-                      ? 'Enter percentage (0-100)'
-                      : 'Enter the discount amount in dollars'}
+                    Maximum number of times this voucher can be used
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
+          )}
 
-          <FormField
-            control={form.control}
-            name="max_uses"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Maximum Uses</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="100"
-                    {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                  />
-                </FormControl>
-                <FormDescription>
-                  Maximum number of times this voucher can be used
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {mode === 'edit' && (
+            <FormField
+              control={form.control}
+              name="usage_limit"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Usage Limit</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="Leave empty for unlimited"
+                      {...field}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value === '' ? null : parseInt(value) || null);
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Maximum number of times this voucher can be used (leave empty for unlimited)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
@@ -335,9 +435,10 @@ export function VoucherForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="used">Used</SelectItem>
-                      <SelectItem value="expired">Expired</SelectItem>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="USED">Used</SelectItem>
+                      <SelectItem value="EXPIRED">Expired</SelectItem>
+                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormDescription>

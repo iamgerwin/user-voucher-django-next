@@ -335,7 +335,7 @@ export function VoucherForm({
             <FormField
               control={form.control}
               name="usage_limit"
-              render={({ field }) => (
+              render={({ field: { value, onChange, ...field } }) => (
                 <FormItem>
                   <FormLabel>Usage Limit</FormLabel>
                   <FormControl>
@@ -343,10 +343,10 @@ export function VoucherForm({
                       type="number"
                       placeholder="Leave empty for unlimited"
                       {...field}
-                      value={field.value ?? ''}
+                      value={value ?? ''}
                       onChange={(e) => {
-                        const value = e.target.value;
-                        field.onChange(value === '' ? null : parseInt(value) || null);
+                        const val = e.target.value;
+                        onChange(val === '' ? null : parseInt(val) || null);
                       }}
                     />
                   </FormControl>

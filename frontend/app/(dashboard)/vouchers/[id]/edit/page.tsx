@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState, useOptimistic } from 'react';
+import { use, useEffect, useState, useOptimistic, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { vouchersApi } from '@/lib/api/vouchers';
 import { Voucher } from '@/types/voucher';
@@ -46,12 +46,12 @@ export default function EditVoucherPage({
     try {
       setIsSaving(true);
 
-      // Optimistically update the UI
-      setOptimisticVoucher({
-        ...voucher,
-        ...data,
-        discount_amount: data.discount_amount ? parseFloat(data.discount_amount) : voucher.discount_amount,
-        usage_limit: data.max_uses || voucher.usage_limit,
+      // Optimistically update the UI within a transition
+      startTransition(() => {
+        setOptimisticVoucher({
+          ...voucher,
+          ...data,
+        });
       });
 
       // Perform the actual update
@@ -72,7 +72,9 @@ export default function EditVoucherPage({
       router.push(`${AppRoute.VOUCHER_DETAIL}/${id}`);
     } catch (err: any) {
       // Revert optimistic update on error
-      setOptimisticVoucher(voucher);
+      startTransition(() => {
+        setOptimisticVoucher(voucher);
+      });
       setError(err.message || 'Failed to update voucher');
       throw err;
     } finally {

@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useOptimistic } from 'react';
 import { useRouter } from 'next/navigation';
 import { vouchersApi } from '@/lib/api/vouchers';
 import { Voucher } from '@/types/voucher';
@@ -16,6 +16,7 @@ export default function EditVoucherPage({
   const { id } = use(params);
   const router = useRouter();
   const [voucher, setVoucher] = useState<Voucher | null>(null);
+  const [optimisticVoucher, setOptimisticVoucher] = useOptimistic(voucher);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,11 +38,27 @@ export default function EditVoucherPage({
   };
 
   const handleSubmit = async (data: UpdateVoucherFormData) => {
+    if (!voucher) return;
+
     try {
       setIsSaving(true);
-      await vouchersApi.updateVoucher(parseInt(id), data);
+
+      // Optimistically update the UI
+      setOptimisticVoucher({
+        ...voucher,
+        ...data,
+        discount_amount: data.discount_amount ? parseFloat(data.discount_amount) : voucher.discount_amount,
+        usage_limit: data.max_uses || voucher.usage_limit,
+      });
+
+      // Perform the actual update
+      const updatedVoucher = await vouchersApi.updateVoucher(parseInt(id), data);
+      setVoucher(updatedVoucher);
+
       router.push(`${AppRoute.VOUCHER_DETAIL}/${id}`);
     } catch (err: any) {
+      // Revert optimistic update on error
+      setOptimisticVoucher(voucher);
       setError(err.message || 'Failed to update voucher');
       throw err;
     } finally {
@@ -72,7 +89,7 @@ export default function EditVoucherPage({
 
       <VoucherForm
         mode="edit"
-        initialData={voucher}
+        initialData={optimisticVoucher || voucher}
         onSubmit={handleSubmit}
         isLoading={isSaving}
       />

@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useOptimistic } from 'react';
 import { useRouter } from 'next/navigation';
 import { usersApi } from '@/lib/api/users';
 import { User } from '@/types/user';
@@ -16,6 +16,7 @@ export default function EditUserPage({
   const { id } = use(params);
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [optimisticUser, setOptimisticUser] = useOptimistic(user);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,11 +38,25 @@ export default function EditUserPage({
   };
 
   const handleSubmit = async (data: UpdateUserFormData) => {
+    if (!user) return;
+
     try {
       setIsSaving(true);
-      await usersApi.updateUser(parseInt(id), data);
+
+      // Optimistically update the UI
+      setOptimisticUser({
+        ...user,
+        ...data,
+      });
+
+      // Perform the actual update
+      const updatedUser = await usersApi.updateUser(parseInt(id), data);
+      setUser(updatedUser);
+
       router.push(`${AppRoute.USER_DETAIL}/${id}`);
     } catch (err: any) {
+      // Revert optimistic update on error
+      setOptimisticUser(user);
       setError(err.message || 'Failed to update user');
       throw err;
     } finally {
@@ -72,7 +87,7 @@ export default function EditUserPage({
 
       <UserForm
         mode="edit"
-        initialData={user}
+        initialData={optimisticUser || user}
         onSubmit={handleSubmit}
         isLoading={isSaving}
       />

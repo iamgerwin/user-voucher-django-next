@@ -1,5 +1,5 @@
 """
-Core models providing base functionality for other apps.
+Abstract base model that provides self-updating created and modified fields.
 """
 
 from django.db import models

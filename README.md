@@ -65,7 +65,28 @@ docker-compose exec backend python manage.py createsuperuser
 # API Docs: http://localhost:8000/api/docs
 ```
 
-### Local Development
+### Local Development (Automated Script)
+
+The easiest way to run both services locally:
+
+```bash
+# Make script executable (first time only)
+chmod +x run.sh
+
+# Run both backend and frontend
+./run.sh
+```
+
+The script will:
+- Check prerequisites (Python, Node.js, npm)
+- Set up virtual environment if needed
+- Install dependencies if needed
+- Run database migrations
+- Start Django backend on http://127.0.0.1:8000
+- Start Next.js frontend on http://localhost:3000
+- Handle graceful shutdown with Ctrl+C
+
+### Local Development (Manual Setup)
 
 ```bash
 # Backend setup
@@ -283,11 +304,18 @@ docker-compose down -v
 
 ### Key Endpoints
 
+#### Health Checks
+- `GET /api/v1/health/` - Basic health check
+- `GET /api/v1/health/detailed/` - Detailed health check with service status
+
 #### Authentication
+- `POST /api/v1/auth/login/` - Login (frontend-friendly)
 - `POST /api/v1/auth/register/` - User registration
-- `POST /api/v1/auth/token/` - Login (obtain JWT tokens)
-- `POST /api/v1/auth/token/refresh/` - Refresh access token
-- `POST /api/v1/auth/token/verify/` - Verify token
+- `POST /api/v1/auth/refresh/` - Refresh access token
+- `POST /api/v1/auth/logout/` - Logout (invalidate token)
+- `POST /api/auth/token/` - JWT token obtain (original endpoint)
+- `POST /api/auth/token/refresh/` - JWT token refresh (original endpoint)
+- `POST /api/auth/token/verify/` - JWT token verify
 
 #### Users
 - `GET /api/v1/users/` - List users (paginated)

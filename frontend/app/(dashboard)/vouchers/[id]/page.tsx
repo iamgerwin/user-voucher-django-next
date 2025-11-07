@@ -1,10 +1,24 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { vouchersApi } from '@/lib/api/vouchers';
 import { Voucher } from '@/types/voucher';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { AppRoute } from '@/lib/constants/routes';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { VoucherStatus } from '@/lib/constants/enums';
 
@@ -21,9 +35,12 @@ export default function VoucherDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const [voucher, setVoucher] = useState<Voucher | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadVoucher();
@@ -38,6 +55,18 @@ export default function VoucherDetailPage({
       setError(err.message || 'Failed to load voucher');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      await vouchersApi.deleteVoucher(parseInt(id));
+      router.push(AppRoute.VOUCHERS);
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete voucher');
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -66,9 +95,21 @@ export default function VoucherDetailPage({
           <h1 className="text-3xl font-bold font-mono">{voucher.code}</h1>
           <p className="text-muted-foreground">Voucher details and information</p>
         </div>
-        <Badge variant={statusVariant[voucher.status]}>
-          {voucher.status.toUpperCase()}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Link href={`${AppRoute.VOUCHERS}/${id}/edit`}>
+            <Button variant="outline">Edit Voucher</Button>
+          </Link>
+          <Button
+            variant="destructive"
+            onClick={() => setIsDeleteDialogOpen(true)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete Voucher'}
+          </Button>
+          <Badge variant={statusVariant[voucher.status]}>
+            {voucher.status.toUpperCase()}
+          </Badge>
+        </div>
       </div>
 
       <Card>
@@ -149,6 +190,28 @@ export default function VoucherDetailPage({
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the voucher
+              <span className="font-semibold font-mono"> {voucher.code}</span> and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

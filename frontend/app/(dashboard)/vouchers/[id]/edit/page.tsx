@@ -1,0 +1,81 @@
+'use client';
+
+import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { vouchersApi } from '@/lib/api/vouchers';
+import { Voucher } from '@/types/voucher';
+import { UpdateVoucherFormData } from '@/lib/validations/voucher';
+import { VoucherForm } from '@/components/vouchers/voucher-form';
+import { AppRoute } from '@/lib/constants/routes';
+
+export default function EditVoucherPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const router = useRouter();
+  const [voucher, setVoucher] = useState<Voucher | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadVoucher();
+  }, [id]);
+
+  const loadVoucher = async () => {
+    try {
+      setIsLoading(true);
+      const voucherData = await vouchersApi.getVoucherById(parseInt(id));
+      setVoucher(voucherData);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load voucher');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (data: UpdateVoucherFormData) => {
+    try {
+      setIsSaving(true);
+      await vouchersApi.updateVoucher(parseInt(id), data);
+      router.push(`${AppRoute.VOUCHER_DETAIL}/${id}`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to update voucher');
+      throw err;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="text-center py-8">Loading voucher...</div>;
+  }
+
+  if (error || !voucher) {
+    return (
+      <div className="text-center py-8 text-destructive">
+        {error || 'Voucher not found'}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Edit Voucher</h1>
+        <p className="text-muted-foreground">
+          Update voucher information for {voucher.code}
+        </p>
+      </div>
+
+      <VoucherForm
+        mode="edit"
+        initialData={voucher}
+        onSubmit={handleSubmit}
+        isLoading={isSaving}
+      />
+    </div>
+  );
+}

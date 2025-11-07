@@ -8,6 +8,8 @@ import { User } from '@/types/user';
 import { UserList } from '@/components/users/user-list';
 import { Button } from '@/components/ui/button';
 import { AppRoute } from '@/lib/constants/routes';
+import { useAuth } from '@/hooks/use-auth';
+import { AuditLogService } from '@/lib/audit-log';
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();

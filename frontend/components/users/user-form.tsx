@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   createUserSchema,
   updateUserSchema,
@@ -22,7 +23,6 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AppRoute } from '@/lib/constants/routes';
 
 interface UserFormProps {
@@ -38,7 +38,6 @@ export function UserForm({
   onSubmit,
   isLoading = false,
 }: UserFormProps) {
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const form = useForm<CreateUserFormData | UpdateUserFormData>({
@@ -66,21 +65,20 @@ export function UserForm({
 
   const handleSubmit = async (data: CreateUserFormData | UpdateUserFormData) => {
     try {
-      setError(null);
       await onSubmit(data);
+      toast.success(
+        mode === 'edit'
+          ? 'User updated successfully'
+          : 'User created successfully'
+      );
     } catch (err: any) {
-      setError(err.message || `Failed to ${mode} user`);
+      toast.error(err.message || `Failed to ${mode} user`);
+      throw err;
     }
   };
 
   return (
     <div className="space-y-6">
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <FormField

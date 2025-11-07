@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { vouchersApi } from '@/lib/api/vouchers';
 import { Voucher } from '@/types/voucher';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,9 +63,10 @@ export default function VoucherDetailPage({
     try {
       setIsDeleting(true);
       await vouchersApi.deleteVoucher(parseInt(id));
+      toast.success('Voucher deleted successfully');
       router.push(AppRoute.VOUCHERS);
     } catch (err: any) {
-      setError(err.message || 'Failed to delete voucher');
+      toast.error(err.message || 'Failed to delete voucher');
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
     }

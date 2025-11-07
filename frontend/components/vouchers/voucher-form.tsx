@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   createVoucherSchema,
   updateVoucherSchema,
@@ -24,7 +25,6 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -47,7 +47,6 @@ export function VoucherForm({
   onSubmit,
   isLoading = false,
 }: VoucherFormProps) {
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // Determine initial discount type from initialData
@@ -106,8 +105,6 @@ export function VoucherForm({
 
   const handleSubmit = async (data: CreateVoucherFormData | UpdateVoucherFormData) => {
     try {
-      setError(null);
-
       // Clean up the data before sending
       const cleanedData = { ...data };
 
@@ -121,19 +118,19 @@ export function VoucherForm({
       }
 
       await onSubmit(cleanedData);
+      toast.success(
+        mode === 'edit'
+          ? 'Voucher updated successfully'
+          : 'Voucher created successfully'
+      );
     } catch (err: any) {
-      setError(err.message || `Failed to ${mode} voucher`);
+      toast.error(err.message || `Failed to ${mode} voucher`);
+      throw err;
     }
   };
 
   return (
     <div className="space-y-6">
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <FormField

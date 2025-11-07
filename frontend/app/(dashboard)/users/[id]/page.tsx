@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { usersApi } from '@/lib/api/users';
 import { User } from '@/types/user';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,9 +54,10 @@ export default function UserDetailPage({
     try {
       setIsDeleting(true);
       await usersApi.deleteUser(parseInt(id));
+      toast.success('User deleted successfully');
       router.push(AppRoute.USERS);
     } catch (err: any) {
-      setError(err.message || 'Failed to delete user');
+      toast.error(err.message || 'Failed to delete user');
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
     }

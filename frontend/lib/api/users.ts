@@ -43,4 +43,8 @@ export const usersApi = {
     );
     return response.data.results;
   },
+
+  async bulkDeleteUsers(ids: number[]): Promise<void> {
+    await Promise.all(ids.map((id) => apiClient.delete(`${ApiEndpoint.USERS}${id}/`)));
+  },
 };

@@ -60,4 +60,8 @@ export const vouchersApi = {
     );
     return response.data.results;
   },
+
+  async bulkDeleteVouchers(ids: number[]): Promise<void> {
+    await Promise.all(ids.map((id) => apiClient.delete(`${ApiEndpoint.VOUCHERS}${id}/`)));
+  },
 };

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { vouchersApi } from '@/lib/api/vouchers';
 import { Voucher } from '@/types/voucher';
 import { VoucherList } from '@/components/vouchers/voucher-list';
@@ -35,6 +36,24 @@ export default function VouchersPage() {
     }
   };
 
+  const handleBulkDelete = async (ids: number[]) => {
+    try {
+      // Optimistically remove from UI
+      const previousVouchers = vouchers;
+      setVouchers(vouchers.filter((v) => !ids.includes(v.id)));
+
+      await vouchersApi.bulkDeleteVouchers(ids);
+      toast.success(`Successfully deleted ${ids.length} voucher${ids.length > 1 ? 's' : ''}`);
+
+      // Reload to ensure consistency
+      await loadVouchers();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete vouchers');
+      // Reload on error to restore correct state
+      await loadVouchers();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -54,7 +73,7 @@ export default function VouchersPage() {
       ) : error ? (
         <div className="text-center py-8 text-destructive">{error}</div>
       ) : (
-        <VoucherList vouchers={vouchers} />
+        <VoucherList vouchers={vouchers} onBulkDelete={handleBulkDelete} />
       )}
     </div>
   );

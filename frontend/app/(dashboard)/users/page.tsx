@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { usersApi } from '@/lib/api/users';
 import { User } from '@/types/user';
 import { UserList } from '@/components/users/user-list';
@@ -29,6 +30,24 @@ export default function UsersPage() {
     }
   };
 
+  const handleBulkDelete = async (ids: number[]) => {
+    try {
+      // Optimistically remove from UI
+      const previousUsers = users;
+      setUsers(users.filter((u) => !ids.includes(u.id)));
+
+      await usersApi.bulkDeleteUsers(ids);
+      toast.success(`Successfully deleted ${ids.length} user${ids.length > 1 ? 's' : ''}`);
+
+      // Reload to ensure consistency
+      await loadUsers();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete users');
+      // Reload on error to restore correct state
+      await loadUsers();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -46,7 +65,7 @@ export default function UsersPage() {
       ) : error ? (
         <div className="text-center py-8 text-destructive">{error}</div>
       ) : (
-        <UserList users={users} />
+        <UserList users={users} onBulkDelete={handleBulkDelete} />
       )}
     </div>
   );

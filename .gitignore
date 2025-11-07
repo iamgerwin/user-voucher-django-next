@@ -73,6 +73,9 @@ coverage/
 *.pid
 *.seed
 *.pid.lock
+docker-compose.override.yml
+backend/staticfiles/
+backend/mediafiles/
 
 # Misc
 .cache/

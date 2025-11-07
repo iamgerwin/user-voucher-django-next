@@ -45,12 +45,12 @@ export function UserForm({
     defaultValues:
       mode === 'edit' && initialData
         ? {
-            username: initialData.username,
-            email: initialData.email,
-            first_name: initialData.first_name || '',
-            last_name: initialData.last_name || '',
-            is_active: initialData.is_active,
-            is_staff: initialData.is_staff,
+            username: initialData.username ?? '',
+            email: initialData.email ?? '',
+            first_name: initialData.first_name ?? '',
+            last_name: initialData.last_name ?? '',
+            is_active: initialData.is_active ?? false,
+            is_staff: initialData.is_staff ?? false,
           }
         : {
             username: '',
@@ -88,7 +88,7 @@ export function UserForm({
               <FormItem>
                 <FormLabel>Username</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter username" {...field} />
+                  <Input placeholder="Enter username" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -102,7 +102,7 @@ export function UserForm({
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="Enter email" {...field} />
+                  <Input type="email" placeholder="Enter email" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -117,7 +117,7 @@ export function UserForm({
                 <FormItem>
                   <FormLabel>First Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="First name" {...field} />
+                    <Input placeholder="First name" {...field} value={field.value ?? ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -131,7 +131,7 @@ export function UserForm({
                 <FormItem>
                   <FormLabel>Last Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Last name" {...field} />
+                    <Input placeholder="Last name" {...field} value={field.value ?? ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -151,6 +151,7 @@ export function UserForm({
                       type="password"
                       placeholder="Enter password"
                       {...field}
+                      value={field.value ?? ''}
                     />
                   </FormControl>
                   <FormDescription>

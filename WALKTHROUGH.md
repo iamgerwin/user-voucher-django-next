@@ -1238,3 +1238,541 @@ This walkthrough demonstrates the complete request lifecycle for:
 | Delete Voucher | DELETE | `/api/v1/vouchers/{id}/` | Yes | Admin Only |
 
 For more details, refer to the specific code files mentioned throughout this document.
+
+---
+
+## Advanced Features
+
+This section covers advanced frontend features implemented to enhance user experience and application responsiveness.
+
+### 7. Optimistic Updates
+
+Optimistic updates provide instant UI feedback by updating the interface before receiving server confirmation. If the server request fails, the UI automatically rolls back to the previous state.
+
+#### How Optimistic Updates Work
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant UI as Edit Form
+    participant State as React State
+    participant Hook as useOptimistic
+    participant API as API Client
+    participant Backend as Django Backend
+    participant DB as Database
+
+    User->>UI: Submit form changes
+    Note over UI,Hook: Step 1: Optimistic Update
+    UI->>State: Store previous state
+    UI->>Hook: setOptimisticData(newData)
+    Hook->>UI: Render optimistic state
+    Note over UI: UI updates IMMEDIATELY
+    User->>User: Sees instant feedback
+
+    Note over UI,Backend: Step 2: Server Request
+    UI->>API: PATCH /api/v1/vouchers/{id}/
+    API->>Backend: HTTP Request with data
+    Backend->>DB: UPDATE voucher SET...
+
+    alt Success Case
+        DB-->>Backend: Update successful
+        Backend-->>API: 200 OK + updated data
+        API-->>State: setData(serverData)
+        State-->>UI: Render confirmed state
+        Note over UI: Optimistic state matches server
+    else Error Case
+        DB-->>Backend: Update failed
+        Backend-->>API: 400 Bad Request
+        API-->>State: setData(previousState)
+        State-->>UI: Render rollback state
+        Note over UI: UI reverts to previous state
+        UI->>User: Show error toast
+    end
+```
+
+#### Implementation Example
+
+**File:** `/frontend/app/(dashboard)/vouchers/[id]/edit/page.tsx`
+
+```typescript
+const handleSubmit = async (data: UpdateVoucherFormData) => {
+  if (!voucher) return;
+
+  try {
+    setIsSaving(true);
+
+    // STEP 1: Optimistically update the UI
+    setOptimisticVoucher({
+      ...voucher,
+      ...data,
+      discount_amount: data.discount_amount ? parseFloat(data.discount_amount) : voucher.discount_amount,
+      usage_limit: data.max_uses || voucher.usage_limit,
+    });
+
+    // STEP 2: Perform the actual update
+    const updatedVoucher = await vouchersApi.updateVoucher(parseInt(id), data);
+    setVoucher(updatedVoucher);
+
+    router.push(`${AppRoute.VOUCHER_DETAIL}/${id}`);
+  } catch (err: any) {
+    // STEP 3: Revert optimistic update on error
+    setOptimisticVoucher(voucher);
+    setError(err.message || 'Failed to update voucher');
+    throw err;
+  } finally {
+    setIsSaving(false);
+  }
+};
+```
+
+#### Benefits
+
+- **Instant Feedback**: UI updates immediately, no waiting for server
+- **Better UX**: Users perceive the app as faster and more responsive
+- **Automatic Rollback**: Errors are handled gracefully with state restoration
+- **Reduced Perceived Latency**: Network delays are hidden from the user
+
+---
+
+### 8. Toast Notifications
+
+Toast notifications provide non-intrusive, temporary feedback for user actions using the Sonner library.
+
+#### Toast Notification Flow
+
+```mermaid
+flowchart TB
+    Start([User Action]) --> Action{Action Type}
+
+    Action -->|Create| Create[Create Operation]
+    Action -->|Update| Update[Update Operation]
+    Action -->|Delete| Delete[Delete Operation]
+    Action -->|Bulk Delete| Bulk[Bulk Delete Operation]
+
+    Create --> API1[API Request]
+    Update --> API2[API Request]
+    Delete --> API3[API Request]
+    Bulk --> API4[API Request]
+
+    API1 --> Success1{Success?}
+    API2 --> Success2{Success?}
+    API3 --> Success3{Success?}
+    API4 --> Success4{Success?}
+
+    Success1 -->|Yes| Toast1[toast.success - Voucher created successfully]
+    Success1 -->|No| Error1[toast.error - Failed to create voucher]
+
+    Success2 -->|Yes| Toast2[toast.success - Voucher updated successfully]
+    Success2 -->|No| Error2[toast.error - Failed to update voucher]
+
+    Success3 -->|Yes| Toast3[toast.success - Voucher deleted successfully]
+    Success3 -->|No| Error3[toast.error - Failed to delete voucher]
+
+    Success4 -->|Yes| Toast4[toast.success - Successfully deleted N vouchers]
+    Success4 -->|No| Error4[toast.error - Failed to delete vouchers]
+
+    Toast1 --> End([User Sees Notification])
+    Toast2 --> End
+    Toast3 --> End
+    Toast4 --> End
+    Error1 --> End
+    Error2 --> End
+    Error3 --> End
+    Error4 --> End
+
+    style Toast1 fill:#4caf50
+    style Toast2 fill:#4caf50
+    style Toast3 fill:#4caf50
+    style Toast4 fill:#4caf50
+    style Error1 fill:#f44336
+    style Error2 fill:#f44336
+    style Error3 fill:#f44336
+    style Error4 fill:#f44336
+```
+
+#### Integration Points
+
+**File:** `/frontend/components/vouchers/voucher-form.tsx`
+
+```typescript
+const handleSubmit = async (data: CreateVoucherFormData | UpdateVoucherFormData) => {
+  try {
+    await onSubmit(data);
+    toast.success(
+      mode === 'edit'
+        ? 'Voucher updated successfully'
+        : 'Voucher created successfully'
+    );
+  } catch (err: any) {
+    toast.error(err.message || `Failed to ${mode} voucher`);
+    throw err;
+  }
+};
+```
+
+#### Toast Types
+
+| Type | Usage | Example |
+|------|-------|---------|
+| `toast.success()` | Successful operations | "Voucher created successfully" |
+| `toast.error()` | Failed operations | "Failed to delete voucher" |
+| `toast.loading()` | Long-running operations | "Processing..." |
+| `toast.info()` | Informational messages | "Please wait..." |
+
+---
+
+### 9. Bulk Delete Actions
+
+Bulk delete allows users to select multiple items and delete them in a single operation.
+
+#### Bulk Delete Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant List as Voucher List
+    participant UI as Selection UI
+    participant Dialog as Confirmation Dialog
+    participant State as React State
+    participant API as Bulk Delete API
+    participant Backend as Django Backend
+
+    User->>List: View vouchers
+    List->>UI: Render checkboxes
+
+    Note over User,UI: Selection Phase
+    User->>UI: Click checkbox on card 1
+    UI->>State: Add ID to selectedIds Set
+    User->>UI: Click checkbox on card 2
+    UI->>State: Add ID to selectedIds Set
+    User->>UI: Click checkbox on card 3
+    UI->>State: Add ID to selectedIds Set
+
+    State->>UI: Update selected count: 3 selected
+    UI->>User: Show "Delete Selected (3)" button
+
+    Note over User,Dialog: Confirmation Phase
+    User->>UI: Click "Delete Selected"
+    UI->>Dialog: Open confirmation dialog
+    Dialog->>User: Show "Delete 3 vouchers?"
+    User->>Dialog: Confirm deletion
+
+    Note over Dialog,Backend: Execution Phase
+    Dialog->>State: Optimistically remove from UI
+    State->>List: Filter out selected IDs
+    List->>User: Show updated list (instant)
+
+    Dialog->>API: bulkDeleteVouchers([1, 2, 3])
+    API->>Backend: DELETE /vouchers/1/
+    API->>Backend: DELETE /vouchers/2/
+    API->>Backend: DELETE /vouchers/3/
+
+    par Parallel Deletions
+        Backend-->>API: 204 No Content (ID 1)
+        Backend-->>API: 204 No Content (ID 2)
+        Backend-->>API: 204 No Content (ID 3)
+    end
+
+    API->>State: Log audit entry
+    API-->>Dialog: All deletions successful
+    Dialog->>User: toast.success("Successfully deleted 3 vouchers")
+    Dialog->>API: Reload list for consistency
+    API->>Backend: GET /api/v1/vouchers/
+    Backend-->>API: Return updated list
+    API->>List: Update vouchers state
+    List->>User: Render confirmed state
+```
+
+#### Implementation Components
+
+**1. List Component with Selection**
+
+File: `/frontend/components/vouchers/voucher-list.tsx`
+
+```typescript
+export function VoucherList({ vouchers, onBulkDelete }: VoucherListProps) {
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  const toggleSelection = (id: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === vouchers.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(vouchers.map((v) => v.id)));
+    }
+  };
+
+  return (
+    <>
+      {/* Selection header */}
+      <div className="flex items-center justify-between mb-4">
+        <Checkbox checked={selectedIds.size === vouchers.length} onCheckedChange={toggleSelectAll} />
+        <span>{selectedIds.size} selected</span>
+        {selectedIds.size > 0 && (
+          <Button onClick={() => setIsDeleteDialogOpen(true)}>
+            Delete Selected ({selectedIds.size})
+          </Button>
+        )}
+      </div>
+
+      {/* Voucher cards with checkboxes */}
+      <div className="grid gap-4">
+        {vouchers.map((voucher) => (
+          <div key={voucher.id} className="relative">
+            <Checkbox
+              checked={selectedIds.has(voucher.id)}
+              onCheckedChange={() => toggleSelection(voucher.id)}
+            />
+            <VoucherCard voucher={voucher} />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+```
+
+**2. Bulk Delete API**
+
+File: `/frontend/lib/api/vouchers.ts`
+
+```typescript
+async bulkDeleteVouchers(ids: number[]): Promise<void> {
+  await Promise.all(ids.map((id) => apiClient.delete(`${ApiEndpoint.VOUCHERS}${id}/`)));
+}
+```
+
+**3. Page Handler with Optimistic Updates**
+
+File: `/frontend/app/(dashboard)/vouchers/page.tsx`
+
+```typescript
+const handleBulkDelete = async (ids: number[]) => {
+  if (!user) return;
+
+  try {
+    // Optimistically remove from UI
+    const previousVouchers = vouchers;
+    setVouchers(vouchers.filter((v) => !ids.includes(v.id)));
+
+    await vouchersApi.bulkDeleteVouchers(ids);
+
+    // Log the bulk deletion
+    AuditLogService.logVoucherBulkDelete(ids, user.username, user.id, ids.length);
+
+    toast.success(`Successfully deleted ${ids.length} voucher${ids.length > 1 ? 's' : ''}`);
+
+    // Reload to ensure consistency
+    await loadVouchers();
+  } catch (err: any) {
+    toast.error(err.message || 'Failed to delete vouchers');
+    await loadVouchers(); // Reload on error
+  }
+};
+```
+
+---
+
+### 10. Audit Log Tracking
+
+The audit log system tracks all CRUD operations performed by users, storing who did what and when in browser localStorage.
+
+#### Audit Log Architecture
+
+```mermaid
+graph TB
+    subgraph "User Actions"
+        Create[Create Operation]
+        Update[Update Operation]
+        Delete[Delete Operation]
+        BulkDelete[Bulk Delete Operation]
+    end
+
+    subgraph "Audit Log Service"
+        LogCreate[logUserCreate<br/>logVoucherCreate]
+        LogUpdate[logUserUpdate<br/>logVoucherUpdate]
+        LogDelete[logUserDelete<br/>logVoucherDelete]
+        LogBulk[logUserBulkDelete<br/>logVoucherBulkDelete]
+    end
+
+    subgraph "Storage Layer"
+        LS[(LocalStorage<br/>audit_logs)]
+        MaxLogs[Max 1000 logs<br/>Auto rotation]
+    end
+
+    subgraph "Log Entry"
+        Entry["AuditLog {<br/>  id: string<br/>  action: create|update|delete<br/>  entity: user|voucher<br/>  entityId: number<br/>  performedBy: string<br/>  timestamp: ISO string<br/>  changes?: object<br/>  metadata?: object<br/>}"]
+    end
+
+    Create --> LogCreate
+    Update --> LogUpdate
+    Delete --> LogDelete
+    BulkDelete --> LogBulk
+
+    LogCreate --> Entry
+    LogUpdate --> Entry
+    LogDelete --> Entry
+    LogBulk --> Entry
+
+    Entry --> LS
+    LS --> MaxLogs
+
+    style Create fill:#4caf50
+    style Update fill:#2196f3
+    style Delete fill:#f44336
+    style BulkDelete fill:#ff9800
+    style LS fill:#ffd54f
+```
+
+#### Audit Log Data Structure
+
+```typescript
+export interface AuditLog {
+  id: string;                    // Unique log ID
+  action: AuditAction;           // create, update, delete, bulk_delete
+  entity: AuditEntity;           // user, voucher
+  entityId: number | number[];   // Single ID or array for bulk
+  entityName: string;            // Display name (username, voucher code)
+  performedBy: string;           // Who performed the action
+  performedById: number;         // User ID who performed action
+  timestamp: string;             // ISO timestamp
+  changes?: Record<string, any>; // What changed (for updates)
+  metadata?: Record<string, any>; // Additional context
+}
+```
+
+#### Integration in CRUD Operations
+
+**Create Voucher:**
+
+```typescript
+const voucher = await vouchersApi.createVoucher(data);
+
+if (user) {
+  AuditLogService.logVoucherCreate(
+    voucher.id,
+    voucher.code,
+    user.username,
+    user.id
+  );
+}
+```
+
+**Update Voucher:**
+
+```typescript
+const updatedVoucher = await vouchersApi.updateVoucher(parseInt(id), data);
+
+if (user && voucher) {
+  AuditLogService.logVoucherUpdate(
+    updatedVoucher.id,
+    updatedVoucher.code,
+    user.username,
+    user.id,
+    data  // Changes object
+  );
+}
+```
+
+**Delete Voucher:**
+
+```typescript
+await vouchersApi.deleteVoucher(parseInt(id));
+
+AuditLogService.logVoucherDelete(
+  voucher.id,
+  voucher.code,
+  user.username,
+  user.id
+);
+```
+
+**Bulk Delete:**
+
+```typescript
+await vouchersApi.bulkDeleteVouchers(ids);
+
+AuditLogService.logVoucherBulkDelete(
+  ids,
+  user.username,
+  user.id,
+  ids.length
+);
+```
+
+#### Retrieving and Filtering Logs
+
+```typescript
+// Get all logs
+const allLogs = AuditLogService.getLogs();
+
+// Filter logs
+const filteredLogs = AuditLogService.getFilteredLogs({
+  action: AuditAction.DELETE,
+  entity: AuditEntity.VOUCHER,
+  performedBy: 'admin',
+  startDate: '2025-01-01',
+  endDate: '2025-12-31'
+});
+
+// Clear all logs
+AuditLogService.clearLogs();
+```
+
+#### Storage Details
+
+- **Storage**: Browser localStorage
+- **Key**: `audit_logs`
+- **Max Entries**: 1,000 logs
+- **Rotation**: Newest logs retained, oldest discarded
+- **Persistence**: Survives page reloads, per-browser
+
+---
+
+## Feature Summary
+
+### Complete Feature Set
+
+| Feature | Description | Files Affected |
+|---------|-------------|----------------|
+| **Optimistic Updates** | Instant UI updates with automatic rollback | `vouchers/[id]/edit/page.tsx`<br/>`users/[id]/edit/page.tsx`<br/>`hooks/use-optimistic-update.ts` |
+| **Toast Notifications** | Success/error feedback with Sonner | All form components<br/>`layout.tsx`<br/>`components/ui/sonner.tsx` |
+| **Bulk Delete** | Multi-select deletion with confirmation | `voucher-list.tsx`<br/>`user-list.tsx`<br/>`vouchers/page.tsx`<br/>`users/page.tsx` |
+| **Audit Logging** | Track all CRUD operations | All CRUD pages<br/>`lib/audit-log.ts`<br/>`types/audit-log.ts` |
+| **Edit Mode Forms** | Unified create/edit forms | `voucher-form.tsx`<br/>`user-form.tsx` |
+
+### Implementation Timeline
+
+1. **Edit Mode Support** - Voucher and User forms support both create and edit modes
+2. **Toast Notifications** - Replaced inline alerts with toast notifications
+3. **Optimistic Updates** - Added instant UI feedback for edit operations
+4. **Bulk Delete** - Implemented multi-select deletion with optimistic updates
+5. **Audit Logging** - Complete action tracking system
+
+### Performance Optimizations
+
+- **Parallel API Calls**: Bulk delete uses `Promise.all()` for concurrent requests
+- **Optimistic Updates**: Reduce perceived latency by updating UI immediately
+- **Local Storage**: Audit logs stored client-side, no server overhead
+- **Automatic Cleanup**: Audit logs auto-rotate at 1,000 entries
+
+### User Experience Enhancements
+
+✅ Instant feedback on all actions
+✅ Non-intrusive notifications
+✅ Graceful error handling with rollback
+✅ Batch operations for efficiency
+✅ Complete action history tracking
+✅ Confirmation dialogs prevent accidents
+

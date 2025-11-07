@@ -14,18 +14,21 @@ from apps.vouchers.models import (
 )
 
 
+@admin.register(PercentageDiscountVoucher)
 class PercentageDiscountVoucherAdmin(PolymorphicChildModelAdmin):
     """Admin for PercentageDiscountVoucher."""
     base_model = PercentageDiscountVoucher
     show_in_index = True
 
 
+@admin.register(FixedAmountVoucher)
 class FixedAmountVoucherAdmin(PolymorphicChildModelAdmin):
     """Admin for FixedAmountVoucher."""
     base_model = FixedAmountVoucher
     show_in_index = True
 
 
+@admin.register(FreeShippingVoucher)
 class FreeShippingVoucherAdmin(PolymorphicChildModelAdmin):
     """Admin for FreeShippingVoucher."""
     base_model = FreeShippingVoucher

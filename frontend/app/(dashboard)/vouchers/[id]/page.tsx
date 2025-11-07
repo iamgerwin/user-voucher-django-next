@@ -1,35 +1,38 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { vouchersApi } from '@/lib/api/vouchers';
 import { Voucher } from '@/types/voucher';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { VoucherStatus } from '@/lib/constants/enums';
 
-const statusVariant = {
-  active: 'default' as const,
-  used: 'secondary' as const,
-  expired: 'destructive' as const,
+const statusVariant: Record<string, 'default' | 'secondary' | 'destructive'> = {
+  [VoucherStatus.ACTIVE]: 'default',
+  [VoucherStatus.USED]: 'secondary',
+  [VoucherStatus.EXPIRED]: 'destructive',
+  [VoucherStatus.CANCELLED]: 'destructive',
 };
 
 export default function VoucherDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = use(params);
   const [voucher, setVoucher] = useState<Voucher | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadVoucher();
-  }, [params.id]);
+  }, [id]);
 
   const loadVoucher = async () => {
     try {
       setIsLoading(true);
-      const voucherData = await vouchersApi.getVoucherById(parseInt(params.id));
+      const voucherData = await vouchersApi.getVoucherById(parseInt(id));
       setVoucher(voucherData);
     } catch (err: any) {
       setError(err.message || 'Failed to load voucher');
@@ -49,6 +52,12 @@ export default function VoucherDetailPage({
       </div>
     );
   }
+
+  // Check if voucher is valid indefinitely (100 years in the future indicates indefinite)
+  const validUntilDate = new Date(voucher.valid_until);
+  const currentDate = new Date();
+  const yearsDifference = validUntilDate.getFullYear() - currentDate.getFullYear();
+  const isIndefinite = yearsDifference >= 50; // Consider 50+ years as indefinite
 
   return (
     <div className="space-y-6">
@@ -73,33 +82,58 @@ export default function VoucherDetailPage({
               <p className="text-lg font-mono">{voucher.code}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Discount Amount</p>
-              <p className="text-lg font-bold">${voucher.discount_amount}</p>
+              <p className="text-sm font-medium text-muted-foreground">Voucher Type</p>
+              <p className="text-lg capitalize">{voucher.voucher_type?.replace('_', ' ')}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Discount</p>
+              <p className="text-lg font-bold">
+                {voucher.discount_percentage
+                  ? `${voucher.discount_percentage}%`
+                  : voucher.discount_amount
+                  ? `$${voucher.discount_amount}`
+                  : 'N/A'}
+              </p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Usage</p>
               <p className="text-lg">
-                {voucher.used_count} / {voucher.max_uses}
+                {voucher.usage_limit
+                  ? `${voucher.usage_count} / ${voucher.usage_limit}`
+                  : `${voucher.usage_count} (Unlimited)`}
               </p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Status</p>
-              <Badge variant={statusVariant[voucher.status]}>
+              <Badge variant={statusVariant[voucher.status] || 'default'}>
                 {voucher.status.toUpperCase()}
               </Badge>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Valid From</p>
-              <p className="text-lg">
-                {format(new Date(voucher.valid_from), 'PPP')}
-              </p>
+              <p className="text-sm font-medium text-muted-foreground">Created By</p>
+              <p className="text-lg">{voucher.created_by_name || 'Unknown'}</p>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Valid Until</p>
-              <p className="text-lg">
-                {format(new Date(voucher.valid_until), 'PPP')}
-              </p>
-            </div>
+            {isIndefinite ? (
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-muted-foreground">Validity Period</p>
+                <p className="text-lg font-semibold">Indefinite</p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Valid From</p>
+                  <p className="text-lg">
+                    {format(new Date(voucher.valid_from), 'PPP')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Valid Until</p>
+                  <p className="text-lg">
+                    {format(new Date(voucher.valid_until), 'PPP')}
+                  </p>
+                </div>
+              </>
+            )}
             <div>
               <p className="text-sm font-medium text-muted-foreground">Created At</p>
               <p className="text-lg">

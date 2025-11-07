@@ -7,11 +7,17 @@ import { Voucher } from '@/types/voucher';
 import { VoucherList } from '@/components/vouchers/voucher-list';
 import { Button } from '@/components/ui/button';
 import { AppRoute } from '@/lib/constants/routes';
+import { useAuth } from '@/hooks/use-auth';
+import { UserRole } from '@/types/user';
 
 export default function VouchersPage() {
+  const { user } = useAuth();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if user can create vouchers
+  const canCreateVouchers = user && (user.role === UserRole.ADMIN || user.role === UserRole.MANAGER);
 
   useEffect(() => {
     loadVouchers();
@@ -36,9 +42,11 @@ export default function VouchersPage() {
           <h1 className="text-3xl font-bold">Vouchers</h1>
           <p className="text-muted-foreground">Manage discount vouchers</p>
         </div>
-        <Link href={AppRoute.VOUCHER_NEW}>
-          <Button>Create Voucher</Button>
-        </Link>
+        {canCreateVouchers && (
+          <Link href={AppRoute.VOUCHER_NEW}>
+            <Button>Create Voucher</Button>
+          </Link>
+        )}
       </div>
 
       {isLoading ? (

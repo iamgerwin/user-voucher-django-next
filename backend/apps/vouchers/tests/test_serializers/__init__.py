@@ -1,0 +1,3 @@
+"""
+Voucher serializer tests.
+"""
